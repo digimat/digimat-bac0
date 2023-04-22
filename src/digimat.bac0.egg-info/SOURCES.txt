@@ -1,0 +1,14 @@
+MANIFEST.in
+README.rst
+setup.py
+src/digimat/__init__.py
+src/digimat.bac0.egg-info/PKG-INFO
+src/digimat.bac0.egg-info/PKG-INFO (imacfhe.local's conflicted copy 2023-04-16)
+src/digimat.bac0.egg-info/SOURCES.txt
+src/digimat.bac0.egg-info/dependency_links.txt
+src/digimat.bac0.egg-info/namespace_packages.txt
+src/digimat.bac0.egg-info/not-zip-safe
+src/digimat.bac0.egg-info/requires.txt
+src/digimat.bac0.egg-info/top_level.txt
+src/digimat/bac0/__init__.py
+src/digimat/bac0/bacnet.py
