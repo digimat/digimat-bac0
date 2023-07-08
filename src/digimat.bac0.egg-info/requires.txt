@@ -1,5 +1,6 @@
 digimat.units
 ptable
+ipcalc
 pytz
 BAC0
 setuptools

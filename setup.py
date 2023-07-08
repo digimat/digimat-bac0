@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(
     name='digimat.bac0',
-    version='0.0.21',
+    version='0.0.24',
     description='Digimat BACnet BAC0 Wrapper',
     long_description=long_description,
     namespace_packages=['digimat'],
@@ -24,6 +24,7 @@ setup(
     install_requires=[
         'digimat.units',
         'ptable',
+        'ipcalc',
         'pytz',
         'BAC0',
         'setuptools'

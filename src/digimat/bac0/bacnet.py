@@ -1,12 +1,53 @@
+#!/bin/python
+
 import BAC0
 
 # import time
 import logging
 import logging.handlers
+import re
+import unicodedata
 
 from prettytable import PrettyTable
 
+from digimat.units import Units
+
 # BAC0.bacpypes.basetypes.EngineeringUnits
+
+units=Units()
+
+
+class ObjectVariableMounter(object):
+    def __init__(self, parent):
+        self._parent=parent
+
+    def strip(self, text):
+        try:
+            text = str(text, 'utf-8')
+        except:
+            pass
+
+        text = unicodedata.normalize('NFD', text)
+        text = text.encode('ascii', 'ignore')
+        text = text.decode("utf-8")
+        return str(text)
+
+    def normalize(self, text):
+        try:
+            text = self.strip(text)
+            text = re.sub('[ ]+\'', '_', text)
+            text = re.sub('[^0-9a-zA-Z_-]', '', text)
+            return text
+        finally:
+            return text
+
+    def mount(self, obj):
+        try:
+            tag=self.normalize(obj.name)
+            if tag and not hasattr(self._parent, tag):
+                setattr(self._parent, tag, obj)
+        except:
+            pass
 
 
 class BACPoint(object):
@@ -52,10 +93,62 @@ class BACPoint(object):
     def unit(self):
         return self._bac0point.units
 
+    def digUnit(self):
+        unit=self.unit
+        if self.isMultiState():
+            return units.multistate()
+        if self.isBinary():
+            return units.digital()
+        if unit==BAC0.bacpypes.basetypes.EngineeringUnits.degreesCelsius:
+            return units.getByName('C')
+        if unit==BAC0.bacpypes.basetypes.EngineeringUnits.percent:
+            return units.getByName('%')
+        if unit==BAC0.bacpypes.basetypes.EngineeringUnits.pascals:
+            return units.getByName('pa')
+        # TODO: xxx
+        return units.none()
+
+    def digDecimals(self):
+        if self.isAnalog():
+            unit=self.unit
+            if unit==BAC0.bacpypes.basetypes.EngineeringUnits.degreesCelsius:
+                return 1
+        return 0
+
+    def isBinary(self):
+        if 'binary' in self.type:
+            return True
+        return False
+
+    def isAnalog(self):
+        if 'analog' in self.type:
+            return True
+        return False
+
+    def isMultiState(self):
+        if 'multiState' in self.type:
+            return True
+        return False
+
+    def multiStateLabel(self):
+        try:
+            return self.properties.units_state[self.value-1]
+        except:
+            pass
+
+    def multiStateLabels(self):
+        try:
+            return self.properties.units_state
+        except:
+            pass
+
+    def label(self):
+        return self.multiStateLabel()
+
     @property
     def state(self):
         try:
-            if 'multiState' in self.type:
+            if self.isMultiState():
                 index=int(self.value)
                 return '%d:%s' % (index, self.properties.units_state[index-1])
             if type(self.value)==float:
@@ -93,6 +186,12 @@ class BACPoint(object):
 
     def write(self, value, prop='presentValue', priority=''):
         self._bac0point.write(value, prop=prop)
+
+    def on(self):
+        self.write('active')
+
+    def off(self):
+        self.write('inactive')
 
     def read(self, prop='presentValue'):
         return self._bac0point.read_property(prop)
@@ -311,11 +410,16 @@ class BACPoints(object):
     def pollStop(self):
         self.poll(0)
 
+    def mountPointNamesAsVariables(self):
+        mounter=ObjectVariableMounter(self)
+        for point in self.points:
+            mounter.mount(point)
+
 
 class BACBag(BACPoints):
-    def __init__(self, device):
+    def __init__(self, device, points=None):
         self._device=device
-        super().__init__()
+        super().__init__(points=points)
 
     def __repr__(self):
         return '<%s[%s](%d points)>' % (self.__class__.__name__, self.device.name,
@@ -327,18 +431,20 @@ class BACBag(BACPoints):
 
 
 class BACDevice(object):
-    def __init__(self, parent, did, ip, poll=60):
+    def __init__(self, parent, did, ip, index=0, poll=60):
         assert(isinstance(parent, BAC))
         self._parent=parent
         self._did=int(did)
         self._ip=ip
+        self._index=index
         self.logger.info('Creating device %s:%d' % (ip, did))
         self._device=BAC0.device(ip, did, parent.bac0, poll=poll, history_size=0)
         self._points=BACPoints()
         self.loadDevicePoints()
 
     def __repr__(self):
-        return '<%s:%d(%s:%s, %s, %d points)>' % (self.__class__.__name__, self._did,
+        return '<%s:%d#%s(%s:%s, %s, %d points)>' % (self.__class__.__name__,
+            self._did, str(self.index),
             self.vendorName, self.modelName, self.systemStatus,
             len(self._points))
 
@@ -375,6 +481,10 @@ class BACDevice(object):
     @property
     def name(self):
         return self.getProperty('objectName')
+
+    @property
+    def index(self):
+        return self._index
 
     @property
     def systemStatus(self):
@@ -451,8 +561,20 @@ class BACDevice(object):
 
         print(t)
 
-    def bag(self):
-        return BACBag(self)
+    def bag(self, key=None):
+        bag=BACBag(self)
+        if key:
+            if key=='*':
+                bag.add(self.points)
+            else:
+                points=self.points.match(key)
+                if points:
+                    bag.add(points)
+        return bag
+
+    def mount(self):
+        if self.points:
+            self.points.mount()
 
 
 class BAC(object):
@@ -467,12 +589,19 @@ class BAC(object):
         self._cacheWhois=None
         self.BAC0LogDisable()
 
+        ifaces=self.getInterfaces([network])
+        if ifaces:
+            try:
+                network=ifaces[0]
+            except:
+                pass
+
         if not network:
-            interfaces=self.getInterfacesIpAddress()
+            interfaces=self.getInterfaces(['eth0', 'en0', 'en1'])
             if interfaces:
                 for address in interfaces:
                     self.logger.info('Found local interface [%s]' % address)
-                    if address=='127.0.0.1':
+                    if '127.0.0.1' in address:
                         continue
                     network=address
                     break
@@ -485,8 +614,8 @@ class BAC(object):
         self._router=router
 
         if router:
-            self.logger.info('Starting BAC0 with network %s@%s' % (self._network, router))
-            self._bac0=BAC0.lite(ip=network, bbmdAddress=router, bbmdTTL=900)
+            self.logger.info('Starting BAC0 with network %s@%s' % (self._network, self._router))
+            self._bac0=BAC0.lite(ip=self._network, bbmdAddress=self._router, bbmdTTL=900)
         else:
             self.logger.info('Starting BAC0 with network %s' % self._network)
             self._bac0=BAC0.lite(ip=self._network)
@@ -496,6 +625,11 @@ class BAC(object):
             self.logger.info('BAC0:%s' % self._bac0)
 
         self._devices={}
+        self._devicesByName={}
+        self._devicesByIp={}
+        self._devicesByIndex={}
+
+        self.open()
 
     def __repr__(self):
         return '<%s:%s(%d devices)>' % (self.__class__.__name__, self._network, len(self._devices))
@@ -515,24 +649,31 @@ class BAC(object):
     def BAC0LogCritical(self):
         self.BAC0LogLevel('critical')
 
-    def getInterfacesIpAddress(self):
-        ip=[]
+    def getInterfaces(self, ifnames=None):
+        ifaces=[]
         try:
             import netifaces
-            for i in netifaces.interfaces():
-                try:
-                    iface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
-                    if iface is not None:
-                        for j in iface:
-                            ip.append(j['addr'])
-                except:
-                    pass
+            import ipcalc
+            try:
+                if not ifnames:
+                    ifnames=netifaces.interfaces()
+                for i in ifnames:
+                    try:
+                        iface = netifaces.ifaddresses(i).get(netifaces.AF_INET)
+                        if iface is not None:
+                            # print(iface)
+                            net=ipcalc.Network('%s/%s' % (iface[0]['addr'], iface[0]['netmask']))
+                            ifaces.append(str(net))
+                    except:
+                        pass
+            except:
+                pass
         except:
-            self.logger.warning('Strongly consider installing netifaces module (pip install netifaces)')
+            self.logger.warning('Strongly consider installing netifaces+ipcalc modules (pip install netifaces ipcalc)')
             self.logger.warning('Without, local interfaces have to be manually declared at node creation')
             return None
 
-        return ip
+        return ifaces
 
     @property
     def logger(self):
@@ -551,8 +692,21 @@ class BAC(object):
             self._bac0.disconnect()
 
     def device(self, did):
+        """return any declared device from id, name, ip or index"""
         try:
             return self._devices[int(did)]
+        except:
+            pass
+        try:
+            return self._devicesByName[did]
+        except:
+            pass
+        try:
+            return self._devicesByIp[did]
+        except:
+            pass
+        try:
+            return self._devicesByIndex[did]
         except:
             pass
 
@@ -569,8 +723,8 @@ class BAC(object):
                     self.declareDevice(item[1], item[0])
             return items
 
-    def discover(self):
-        return self.whois(True)
+    def discover(self, useCache=True):
+        return self.whois(autoDeclareDevices=True, useCache=useCache)
 
     def declareDevice(self, did, ip=None, poll=60):
         device=self.device(did)
@@ -582,25 +736,29 @@ class BAC(object):
                         if address[1]==did:
                             ip=address[0]
             if did and ip:
-                device=BACDevice(self, did, ip, poll=poll)
+                device=BACDevice(self, did, ip, index=len(self._devices), poll=poll)
                 self._devices[did]=device
+                self._devicesByName[device.name]=device
+                self._devicesByIp[ip]=device
+                self._devicesByIndex[device.index]=device
         return device
 
     def __getitem__(self, key):
+        """return any declared device from id, name or ip"""
         return self.device(key)
 
     def dump(self):
         devices=self.devices()
         if devices:
             t=PrettyTable()
-            t.field_names=['name', 'id', 'ip', 'vendor', 'model', ' status', 'description', 'points']
+            t.field_names=['#', 'name', 'id', 'ip', 'vendor', 'model', ' status', 'description', 'points']
             t.align['*']='l'
             t.align['name']='l'
             t.align['vendor']='l'
             t.align['model']='l'
             t.align['description']='l'
             for device in devices:
-                t.add_row([device.name, device.did, device.ip,
+                t.add_row([device.index, device.name, device.did, device.ip,
                            device.vendorName, device.modelName, device.systemStatus,
                            device.description,
                            device.points.count()])
