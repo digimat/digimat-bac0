@@ -1,6 +1,6 @@
 #!/bin/python
 
-import BAC0
+import pkg_resources
 
 # import time
 import logging
@@ -12,9 +12,14 @@ from prettytable import PrettyTable
 
 from digimat.units import Units
 
+import BAC0
 # BAC0.bacpypes.basetypes.EngineeringUnits
 
 units=Units()
+
+
+# Help to build a local node
+# https://pythoninthebuilding.wordpress.com/
 
 
 class ObjectVariableMounter(object):
@@ -54,6 +59,25 @@ class BACPoint(object):
     def __init__(self, bac0point, index=None):
         self._bac0point=bac0point
         self._index=index
+        self.onInit()
+
+    def onInit(self):
+        pass
+
+    def isWritable(self):
+        return False
+
+    def priority(self, priority=None):
+        # to be overriden
+        return None
+
+    def activePriority(self):
+        p=self.priority()
+        if p:
+            return p[2]
+
+    def reloadBacnetProperties(self):
+        self._bac0point.update_bacnet_properties()
 
     @property
     def properties(self):
@@ -78,6 +102,10 @@ class BACPoint(object):
         return self.properties.name
 
     @property
+    def label(self):
+        return None
+
+    @property
     def type(self):
         return self.properties.type
 
@@ -89,28 +117,49 @@ class BACPoint(object):
     def description(self):
         return self.properties.description
 
+    def isOutOfService(self):
+        if self.bacnetProperty('outOfService'):
+            return True
+        return False
+
     @property
     def unit(self):
-        return self._bac0point.units
+        unit=self._bac0point.units
+        return unit
+
+    @property
+    def unitNumber(self):
+        try:
+            return BAC0.bacpypes.basetypes.EngineeringUnits(self.unit).get_long()
+        except:
+            pass
 
     def digUnit(self):
-        unit=self.unit
         if self.isMultiState():
             return units.multistate()
         if self.isBinary():
             return units.digital()
+
+        unit=self.unitNumber
         if unit==BAC0.bacpypes.basetypes.EngineeringUnits.degreesCelsius:
             return units.getByName('C')
         if unit==BAC0.bacpypes.basetypes.EngineeringUnits.percent:
             return units.getByName('%')
         if unit==BAC0.bacpypes.basetypes.EngineeringUnits.pascals:
             return units.getByName('pa')
-        # TODO: xxx
+
+        # TODO: add more units...
         return units.none()
+
+    def digUnitStr(self):
+        try:
+            return units.getByNumber(self.digUnit())
+        except:
+            pass
 
     def digDecimals(self):
         if self.isAnalog():
-            unit=self.unit
+            unit=self.unitNumber
             if unit==BAC0.bacpypes.basetypes.EngineeringUnits.degreesCelsius:
                 return 1
         return 0
@@ -130,27 +179,9 @@ class BACPoint(object):
             return True
         return False
 
-    def multiStateLabel(self):
-        try:
-            return self.properties.units_state[self.value-1]
-        except:
-            pass
-
-    def multiStateLabels(self):
-        try:
-            return self.properties.units_state
-        except:
-            pass
-
-    def label(self):
-        return self.multiStateLabel()
-
     @property
     def state(self):
         try:
-            if self.isMultiState():
-                index=int(self.value)
-                return '%d:%s' % (index, self.properties.units_state[index-1])
             if type(self.value)==float:
                 return '%.02f' % self.value
         except:
@@ -160,7 +191,11 @@ class BACPoint(object):
     @property
     def value(self):
         try:
-            return self.bacnetproperties['presentValue']
+            # value=self.bacnetproperties['presentValue']
+            # FIXME: presentValue property doesn't seems to be refreshed by BAC0.
+            # Using ".value" may generate BACnet traffic
+            value=self._bac0point.value
+            return value
         except:
             pass
 
@@ -184,20 +219,12 @@ class BACPoint(object):
     def covCancel(self):
         self._bac0point.cancel_cov()
 
-    def write(self, value, prop='presentValue', priority=''):
-        self._bac0point.write(value, prop=prop)
-
-    def on(self):
-        self.write('active')
-
-    def off(self):
-        self.write('inactive')
-
     def read(self, prop='presentValue'):
         return self._bac0point.read_property(prop)
 
     def refresh(self):
-        return self._bac0point.value
+        self._bac0point.value
+        return self.value
 
     def __repr__(self):
         return '<%s(%s:%s#%s=%s %s)>' % (self.__class__.__name__,
@@ -213,12 +240,41 @@ class BACPoint(object):
         t.add_row(['name', self.name])
         t.add_row(['description', self.description])
         t.add_row(['type', self.type])
+        # t.add_row(['isBinary', self.isBinary()])
+        # t.add_row(['isAnalog', self.isAnalog()])
+        # t.add_row(['isMultiState', self.isMultiState()])
         t.add_row(['address', self.address])
         t.add_row(['value', self.value])
         if self.state!=self.value:
             t.add_row(['state', self.state])
-        t.add_row(['unit', self.unit])
+        if self.isMultiState():
+            labels=self.labels
+            if labels:
+                index=1
+                for l in labels:
+                    t.add_row(['state[%d]' % index, l])
+                    index+=1
+        unit=self.unit
+        if self.digUnitStr():
+            unit += " (%s)" % self.digUnitStr()
+        t.add_row(['unit', unit])
         t.add_row(['COV', self.isCOV()])
+        t.add_row(['OutOfService', self.isOutOfService()])
+        if self.isWritable():
+            try:
+                for priority in range(1, 16+1):
+                    p=self.priority(priority)
+                    if p:
+                        t.add_row(['PriorityArray[%d]' % p[2], '%s:%s' % (p[1], str(p[0]))])
+            except:
+                pass
+            try:
+                default=self.default
+                if default:
+                    t.add_row(['Default', str(default)])
+            except:
+                pass
+
         if self._index is not None:
             t.add_row(['index', self.index])
         print(t)
@@ -236,15 +292,226 @@ class BACPoint(object):
             return True
         return True
 
-    def poll(self, delay=60):
+    def poll(self, delay=20):
         self._bac0point.poll(delay)
 
     def pollStop(self):
         self.poll(0)
 
 
+class BACPointInput(BACPoint):
+    pass
+
+
+class BACPointWritable(BACPoint):
+    def isWritable(self):
+        return True
+
+    def write(self, value, prop='presentValue', priority=''):
+        try:
+            return self._bac0point.write(value, prop=prop)
+        except:
+            pass
+        return None
+
+    def reloadPriorityArray(self):
+        self._bac0point.read_priority_array()
+
+    def priority(self, priority=None):
+        if priority:
+            try:
+                p=self._bac0point.priority(priority)
+                if p:
+                    # value, valueType, level
+                    return p[1], p[0], priority
+                return
+            except:
+                pass
+
+        for priority in range(1, 16+1):
+            try:
+                p=self.priority(priority)
+                if p:
+                    # value, valueType, level
+                    return p[1], p[0], priority
+            except:
+                pass
+
+    def relinquish(self, priority, reload=False):
+        try:
+            if priority:
+                self.write(value="null", priority=priority)
+                if reload:
+                    self.reloadPriorityArray()
+        except:
+            pass
+
+    def relinquishAll(self):
+        for i in range(1, 16+1):
+            self.relinquish(i, reload=False)
+        self.reloadPriorityArray()
+
+    @property
+    def default(self):
+        try:
+            return self.bacnetProperty('relinquishDefault')
+        except:
+            pass
+
+    @default.setter
+    def default(self, value):
+        try:
+            self._bac0point.default(value)
+        except:
+            pass
+
+
+class BACPointOutput(BACPointWritable):
+    pass
+
+
+class BACPointValue(BACPointWritable):
+    pass
+
+
+class BACPointBinary(BACPoint):
+    def isBinary(self):
+        return True
+
+    def isAnalog(self):
+        return False
+
+    def isMultiState(self):
+        return False
+
+    def isOn(self):
+        if self.value=='active':
+            return True
+        return False
+
+    def isOff(self):
+        return not self.isON()
+
+    def bool(self):
+        return self.isON()
+
+
+class BACPointAnalog(BACPoint):
+    def isBinary(self):
+        return False
+
+    def isAnalog(self):
+        return True
+
+    def isMultiState(self):
+        return False
+
+    def fahrenheitToCelcius(self, value):
+        return (value-32.0)*5.0/9.0
+
+    def celciusToFahrenheit(self, value):
+        return (value*9.0/5.9)+32.0
+
+    def toCelcius(self, value):
+        if self.unitNumber==BAC0.bacpypes.basetypes.EngineeringUnits.degreesFahrenheit:
+            return self.fahrenheitToCelcius(self.value)
+        return self.value
+
+
+class BACPointMultiState(BACPoint):
+    def isBinary(self):
+        return False
+
+    def isAnalog(self):
+        return False
+
+    def isMultiState(self):
+        return True
+
+    @property
+    def labels(self):
+        try:
+            return self.properties.units_state
+        except:
+            pass
+
+    @BACPoint.label.getter
+    def label(self):
+        try:
+            return self.properties.units_state[self.value-1]
+        except:
+            pass
+
+    @BACPoint.state.getter
+    def state(self):
+        try:
+            index=int(self.value)
+            return '%d:%s' % (index, self.properties.units_state[index-1])
+        except:
+            pass
+        return self.value
+
+    def valueFromLabel(self, label):
+        try:
+            return self.labels.index(label)+1
+        except:
+            pass
+
+
+class BACPointAnalogInput(BACPointAnalog, BACPointInput):
+    pass
+
+
+class BACPointAnalogOutput(BACPointAnalog, BACPointOutput):
+    pass
+
+
+class BACPointAnalogValue(BACPointAnalog, BACPointValue):
+    pass
+
+
+class BACPointBinaryInput(BACPointBinary, BACPointInput):
+    pass
+
+
+class BACPointBinaryOutput(BACPointBinary, BACPointOutput):
+    def on(self):
+        self.write('active')
+
+    def off(self):
+        self.write('inactive')
+
+    def toggle(self):
+        if self.isOn():
+            self.off()
+        else:
+            self.on()
+
+
+class BACPointBinaryValue(BACPointBinary, BACPointValue):
+    pass
+
+
+class BACPointMultiStateInput(BACPointMultiState, BACPointInput):
+    pass
+
+
+class BACPointMultiStateOutput(BACPointMultiState, BACPointOutput):
+    def write(self, value, prop='presentValue', priority=''):
+        if type(value)=='str':
+            value=self.valueFromLabel(value)
+        super().write(value, prop, priority)
+
+
+class BACPointMultiStateValue(BACPointMultiState, BACPointValue):
+    def write(self, value, prop='presentValue', priority=''):
+        if type(value)=='str':
+            value=self.valueFromLabel(value)
+        super().write(value, prop, priority)
+
+
 class BACPoints(object):
-    def __init__(self, points=None, filterOutOfService=True):
+    def __init__(self, points=None, filterOutOfService=False):
         self._points=[]
         self._pointByName={}
         self._indexByName={}
@@ -265,15 +532,7 @@ class BACPoints(object):
             if self.getByName(point.name):
                 continue
 
-            oos=False
-            if filterOutOfService:
-                try:
-                    if point.properties.bacnet_properties['outOfService']:
-                        oos=True
-                except:
-                    pass
-
-            if not oos:
+            if not point.isOutOfService():
                 index=len(self._points)
                 point._index=index
                 self._points.append(point)
@@ -358,7 +617,13 @@ class BACPoints(object):
             pass
 
     def __getitem__(self, index):
-        return self.getByIndex(index) or self.getByName(index)
+        item=self.getByIndex(index) or self.getByName(index)
+        if not item:
+            try:
+                item=self.match(index)[0]
+            except:
+                pass
+        return item
 
     def index(self, name):
         try:
@@ -373,18 +638,25 @@ class BACPoints(object):
             points=self.pointsMatching(keys)
         if points:
             t=PrettyTable()
-            t.field_names=['#', 'name', 'description', 'type', 'address', 'value', 'unit', 'COV']
+            t.field_names=['#', 'class', 'name', 'description', 'type', 'address', 'value', 'unit', 'COV', 'OoS', 'PRI']
             t.align['name']='l'
+            t.align['class']='l'
             t.align['description']='l'
             t.align['type']='l'
             t.align['address']='r'
             t.align['value']='r'
             t.align['unit']='l'
+            t.align['prio']='l'
             for p in points:
-                t.add_row([self.index(p.name), p.name, p.description,
+                unit=p.unit
+                if p.digUnitStr():
+                    unit=p.digUnitStr()
+                t.add_row([self.index(p.name),
+                           self.__class__.__name__,
+                           p.name, p.description,
                            p.type, p.address,
-                           p.state, p.unit,
-                           p.isCOV()])
+                           p.state, unit,
+                           p.isCOV(), p.isOutOfService(), p.activePriority()])
             print(t)
 
     def refresh(self, keys=None):
@@ -411,9 +683,16 @@ class BACPoints(object):
         self.poll(0)
 
     def mountPointNamesAsVariables(self):
+        """Create object variables mapped to each corresponding point's name"""
         mounter=ObjectVariableMounter(self)
         for point in self.points:
             mounter.mount(point)
+
+    def relinquishAll(self):
+        """Reset priority array of each writable objects"""
+        for point in self.points:
+            if point.isWritable():
+                point.relinquishAll()
 
 
 class BACBag(BACPoints):
@@ -438,7 +717,7 @@ class BACDevice(object):
         self._ip=ip
         self._index=index
         self.logger.info('Creating device %s:%d' % (ip, did))
-        self._device=BAC0.device(ip, did, parent.bac0, poll=poll, history_size=0)
+        self._device=BAC0.device(ip, did, parent.bac0, poll=poll, history_size=None)
         self._points=BACPoints()
         self.loadDevicePoints()
 
@@ -450,7 +729,30 @@ class BACDevice(object):
 
     def loadDevicePoints(self):
         for bac0point in self._device.points:
-            point=BACPoint(bac0point)
+            ptype=bac0point.properties.type
+            # print(ptype)
+            if ptype=='binaryInput':
+                point=BACPointBinaryInput(bac0point)
+            elif ptype=='binaryOutput':
+                point=BACPointBinaryOutput(bac0point)
+            elif ptype=='analogInput':
+                point=BACPointAnalogInput(bac0point)
+            elif ptype=='analogOutput':
+                point=BACPointAnalogOutput(bac0point)
+            elif ptype=='binaryValue':
+                point=BACPointBinaryValue(bac0point)
+            elif ptype=='analogValue':
+                point=BACPointAnalogValue(bac0point)
+            elif ptype=='multiStateInput':
+                point=BACPointMultiStateInput(bac0point)
+            elif ptype=='multiStateOutput':
+                point=BACPointMultiStateOutput(bac0point)
+            elif ptype=='multiStateValue':
+                point=BACPointMultiStateValue(bac0point)
+            else:
+                self.logger.warning('unable to match a specific BACPoint() class for type %s' % ptype)
+                point=BACPoint(bac0point)
+
             self._points.add(point)
 
     @property
@@ -506,6 +808,9 @@ class BACDevice(object):
     def description(self):
         return self.getProperty('description')
 
+    def isSegmentationSupported(self):
+        return self._device.segmentation_supported
+
     @property
     def did(self):
         return self._did
@@ -554,6 +859,7 @@ class BACDevice(object):
         t.add_row(['vendorName', self.vendorName])
         t.add_row(['vendorIdentifier', self.vendorIdentifier])
         t.add_row(['points', self.points.count()])
+        t.add_row(['segmentationSupported', str(self.isSegmentationSupported())])
         for ptype in ['analogInput', 'analogOutput', 'binaryInput', 'binaryOutput', 'analogValue', 'binaryValue', 'multiStateValue']:
             points=self.points.type(ptype)
             if points:
@@ -572,13 +878,15 @@ class BACDevice(object):
                     bag.add(points)
         return bag
 
-    def mount(self):
-        if self.points:
-            self.points.mount()
-
 
 class BAC(object):
-    def __init__(self, network=None, router=None, logServer='localhost', logLevel=logging.DEBUG):
+    def __init__(self, localObjName='Digimat-BAC0', deviceId=None,
+                 modelName='Digimat BAC0 Python Node',
+                 vendorId=892, vendorName='Digimat',
+                 description='https://pypi.org/project/digimat.bac0/', location='Veyrier, CH',
+                 network=None, router=None,
+                 logServer='localhost', logLevel=logging.DEBUG):
+
         logger=logging.getLogger("BAC(%s)" % network)
         logger.setLevel(logLevel)
         socketHandler = logging.handlers.SocketHandler(logServer, logging.handlers.DEFAULT_TCP_LOGGING_PORT)
@@ -613,16 +921,23 @@ class BAC(object):
         self._network=network
         self._router=router
 
+        firmwareRevision="%s (BAC0 %s)" % (self.version, BAC0.version)
+
         if router:
             self.logger.info('Starting BAC0 with network %s@%s' % (self._network, self._router))
-            self._bac0=BAC0.lite(ip=self._network, bbmdAddress=self._router, bbmdTTL=900)
+            self._bac0=BAC0.lite(localObjName=localObjName, deviceId=deviceId, firmwareRevision=firmwareRevision,
+                                 vendorId=vendorId, vendorName=vendorName, description=description, location=location,
+                                 ip=self._network, bbmdAddress=self._router, bbmdTTL=900)
         else:
             self.logger.info('Starting BAC0 with network %s' % self._network)
-            self._bac0=BAC0.lite(ip=self._network)
+            self._bac0=BAC0.lite(localObjName=localObjName, deviceId=deviceId, firmwareRevision=firmwareRevision,
+                                 vendorId=vendorId, vendorName=vendorName, description=description, location=location,
+                                 ip=self._network)
 
         if self._bac0:
             self.logger.info('Using BAC0 v%s' % BAC0.version)
             self.logger.info('BAC0:%s' % self._bac0)
+            self.logger.info('Using digimat.bac0 v%s' % self.version)
 
         self._devices={}
         self._devicesByName={}
@@ -633,6 +948,17 @@ class BAC(object):
 
     def __repr__(self):
         return '<%s:%s(%d devices)>' % (self.__class__.__name__, self._network, len(self._devices))
+
+    def getVersion(self):
+        try:
+            distribution=pkg_resources.get_distribution('digimat.bac0')
+            return distribution.parsed_version
+        except:
+            pass
+
+    @property
+    def version(self):
+        return self.getVersion()
 
     def BAC0LogLevel(self, level='info'):
         BAC0.log_level(level)
@@ -713,9 +1039,9 @@ class BAC(object):
     def devices(self, key=None):
         return self._devices.values()
 
-    def whois(self, autoDeclareDevices=False, useCache=True):
+    def whois(self, useCache=False, autoDeclareDevices=False):
         if self._bac0:
-            if not self._cacheWhois:
+            if not self._cacheWhois or not useCache:
                 self._cacheWhois=self._bac0.whois()
             items=self._cacheWhois
             if items and autoDeclareDevices:
@@ -723,8 +1049,8 @@ class BAC(object):
                     self.declareDevice(item[1], item[0])
             return items
 
-    def discover(self, useCache=True):
-        return self.whois(autoDeclareDevices=True, useCache=useCache)
+    def discover(self, useCache=False):
+        return self.whois(useCache=useCache, autoDeclareDevices=True)
 
     def declareDevice(self, did, ip=None, poll=60):
         device=self.device(did)
@@ -751,7 +1077,7 @@ class BAC(object):
         devices=self.devices()
         if devices:
             t=PrettyTable()
-            t.field_names=['#', 'name', 'id', 'ip', 'vendor', 'model', ' status', 'description', 'points']
+            t.field_names=['#', 'name', 'id', 'ip', 'vendor', 'model', ' status', 'description', '#points']
             t.align['*']='l'
             t.align['name']='l'
             t.align['vendor']='l'

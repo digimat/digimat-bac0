@@ -12,8 +12,5 @@ b=BAC(network=args.network, router=args.router)
 if args.debug:
     b.BAC0LogDebug()
 
-b.whois()
-time.sleep(1)
-b.whois()
-time.sleep(1)
-b.whois()
+if b.discover():
+    b.dump()
