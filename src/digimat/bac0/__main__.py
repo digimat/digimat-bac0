@@ -1,4 +1,3 @@
-import time
 import argparse
 from digimat.bac0 import BAC
 
@@ -8,9 +7,9 @@ parser.add_argument('--network', dest='network', type=str, help='optional ip/net
 parser.add_argument('--debug', dest='debug', action='store_true', help='enable debug/verbose mode')
 args=parser.parse_args()
 
-b=BAC(network=args.network, router=args.router)
+bacnet=BAC(network=args.network, router=args.router)
 if args.debug:
-    b.BAC0LogDebug()
+    bacnet.BAC0LogDebug()
 
-if b.discover():
-    b.dump()
+if bacnet.discover():
+    bacnet.dump()
