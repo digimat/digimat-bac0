@@ -12,5 +12,8 @@ src/digimat.bac0.egg-info/requires.txt
 src/digimat.bac0.egg-info/top_level.txt
 src/digimat/bac0/__init__.py
 src/digimat/bac0/__main__.py
+src/digimat/bac0/bacdevice.py
 src/digimat/bac0/bacnet.py
+src/digimat/bac0/bacpoint.py
+src/digimat/bac0/bacpoints.py
 src/digimat/bac0/xmlremote.py

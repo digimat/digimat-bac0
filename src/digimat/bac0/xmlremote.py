@@ -1,5 +1,5 @@
-from .bacnet import BACPoint
-from .bacnet import BACBag
+from .bacpoint import BACPoint
+from .bacpoints import BACBag
 
 import BAC0
 import xml.etree.ElementTree as ET

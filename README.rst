@@ -39,15 +39,15 @@ Now, assuming that your network settings are correct, you can start discovering 
    [('192.168.0.15', 8015), ('192.168.0.80', 4000)]
 
 
-The *whois()* method returns a list of remote BACnet/IP servers detected on the network (ip/deviceId). You can then can add to your node thoses remote *devices* (BACnet servers)
+The *whois()* method returns a list of remote BACnet/address servers detected on the network (address/deviceId). You can then can add to your node thoses remote *devices* (BACnet servers)
 
 .. code-block:: python
 
     >>> device=bacnet.declareDevice(8015, '192.168.0.15')
-    >>> device=bacnet.declareDevice(8015, ip='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
+    >>> device=bacnet.declareDevice(8015, address='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
 
 
-In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's ip address
+In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address
 
 .. code-block:: python
 
@@ -65,7 +65,7 @@ Every BAC* object has a .dump() method, very useful in interactive sessions
 
     >>> bacnet.dump()
     +---+---------+------+--------------+---------+---------------------+-------------+-------------+---------+
-    | # | name    |  id  |      ip      | vendor  | model               |    status   | description | #points |
+    | # | name    |  id  |   address    | vendor  | model               |    status   | description | #points |
     +---+---------+------+--------------+---------+---------------------+-------------+-------------+---------+
     | 0 | s_112_1 | 8015 | 192.168.0.15 | Digimat | Digimat3_CPU_Bridge | operational | S+T         |    66   |
     +---+---------+------+--------------+---------+---------------------+-------------+-------------+---------+
@@ -75,7 +75,7 @@ Every BAC* object has a .dump() method, very useful in interactive sessions
     | property              | value        |
     +-----------------------+--------------+
     | ip                    | 192.168.0.15 |
-    | id                    | 8015         |
+    | address               | 8015         |
     | name                  | s_112_1      |
     | description           | S+T          |
     | systemStatus          | operational  |
@@ -216,14 +216,15 @@ Each point of the *BACPoints* object is accessible by it's index, type or a part
     | index        | 8                                             |
     +--------------+-----------------------------------------------+
 
-    >>> point=device.points.analogInput(13056)
+    >>> point=device.points.analogInput(13064)
     >>> point=bacnet[8015].points.analogOuput(18181)
 
     >>> points['sonde hall'] # return the first object matching to this
     <BACPointAnalogInput(r_112_1_cio_13064_0:analogInput#13064=26.55 degreesCelsius)>
 
-    >>> point=point['r_112_1_cio_13067_0']
-    >>> point=point['13067']
+    >>> point=point['r_112_1_cio_13064_0']
+    >>> point=point['13064']
+    >>> point=point['analogInput13064']
 
 
 Points are exposed through *BACPoint* objects (generic class), derived in BACPointBinaryInput, BACPointBinaryOutput, BACPointAnalogInput, BACPointAnalogOutput, BACPointBinaryValue, BACPointAnalogValue, 
@@ -256,6 +257,10 @@ BACPointMultiStateInput, BACPointMultiStateOutput, BACPointMultiStateValue objec
     >>> point.on()
     >>> point.off()
     >>> point.toggle()
+    >>> point.isOn()
+    >>> point.isOff()
+    >>> point.label
+    >>> point.labels
 
     # for multiState values
     >>> point.state
