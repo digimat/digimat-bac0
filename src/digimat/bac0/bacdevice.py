@@ -100,7 +100,7 @@ class BACDevice(object):
             # value=self._bac0device.bacnet_properties[name].
             value=self._bac0device._bacnet_properties(False)[name]
             if update or value is None:
-                print("DEBUG:REFRESH", name)
+                # print("DEBUG:REFRESH", name)
                 value=self._bac0device._bacnet_properties(True)[name]
             return value
         except:
