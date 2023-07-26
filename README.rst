@@ -279,7 +279,7 @@ If a *BACDevice* object doesn't expose something that would be useful, you can u
 If the *BAC* object doesn't expose something that would be useful, you can use the underlying ._bac0 BAC0 `application object <https://github.com/ChristianTremblay/BAC0/blob/master/BAC0/scripts/Lite.py>`_.
 
 
-INTEGRATED NODE
+Integrated Node
 ===============
 
 The module provide a simple BACnet browser application you can start with "python -i -m digimat.bac0 [--ip "192.168.0.84/24"] [--router x.x.x.x] [--debug]". This will launch the following application
@@ -303,7 +303,7 @@ The module provide a simple BACnet browser application you can start with "pytho
 When launched interactively (-i), you'll have a working *bacnet* variable (a BAC object) ready to be used in just one command line.
 
 
-TODO
+Todo
 ====
 
 We will try to add objects and methods docstring as soon as possible to help the use of theses objects. Please let us know (fhess@st-sa.ch) is this is useful for someone (for us it is).

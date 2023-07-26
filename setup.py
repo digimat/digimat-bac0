@@ -17,7 +17,7 @@ setup(
     namespace_packages=['digimat'],
     author='Frederic Hess',
     author_email='fhess@st-sa.ch',
-    url='http://www.digimat.ch',
+    url='https://github.com/digimat/digimat-bac0',
     license='PSF',
     packages=find_packages('src'),
     package_dir={'': 'src'},
