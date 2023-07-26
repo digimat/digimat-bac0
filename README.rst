@@ -1,7 +1,7 @@
 Python digimat.bac0
 ===================
 
-This is a Python 3 module basically providing a wrapper around the `[BAC0] <https://bac0.readthedocs.io/en/latest/>`_ module, 
+This is a Python 3 module basically providing a wrapper around the `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
 itself using `bacpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module id to provide
 a simple way to discover/browse/interact with BACnet/IP devices on a network, especially from a terminal session. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
 
