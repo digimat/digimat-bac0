@@ -11,7 +11,7 @@ a simple way to discover/browse/interact with BACnet/IP devices on a network, es
     >>> bacnet=BAC(network='192.168.0.84/24')
 
 
-Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). The underlying BAC0 module has started a thread managing
+Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). This short `Youtube Screencast <https://youtu.be/YUUXk398lh8>`_ shows a small interactive usage of this module. The underlying BAC0 module has started a thread managing
 the remote bacnet nodes (understand remote "BACnet servers") you will declare to your node. You have to provide the ip ("ip/networkSize") that will be used to send/receive 
 every BACnet UDP messages. Under Linux/MacOS hots, this can be done automagically if you have installed the `netifaces <https://pypi.org/project/netifaces/>`_ module (install it with *pip install -U netifaces*). If so, you can
 ommit the *network* parameter (we will try to guess the ip address of you network card)

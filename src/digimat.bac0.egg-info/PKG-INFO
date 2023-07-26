@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: digimat.bac0
-Version: 0.0.54
+Version: 0.0.55
 Summary: Digimat BACnet BAC0 Wrapper
 Home-page: https://github.com/digimat/digimat-bac0
 Author: Frederic Hess
@@ -13,7 +13,7 @@ Python digimat.bac0
 ===================
 
 This is a Python 3 module basically providing a wrapper around the `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
-itself using `bacpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module id to provide
+itself using `bacpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module is to provide
 a simple way to discover/browse/interact with BACnet/IP devices on a network, especially from a terminal session. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
 
 .. code-block:: python
@@ -22,7 +22,7 @@ a simple way to discover/browse/interact with BACnet/IP devices on a network, es
     >>> bacnet=BAC(network='192.168.0.84/24')
 
 
-Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). The underlying BAC0 module has started a thread managing
+Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). This short `Youtube Screencast <https://youtu.be/YUUXk398lh8>`_ shows a small interactive usage of this module. The underlying BAC0 module has started a thread managing
 the remote bacnet nodes (understand remote "BACnet servers") you will declare to your node. You have to provide the ip ("ip/networkSize") that will be used to send/receive 
 every BACnet UDP messages. Under Linux/MacOS hots, this can be done automagically if you have installed the `netifaces <https://pypi.org/project/netifaces/>`_ module (install it with *pip install -U netifaces*). If so, you can
 ommit the *network* parameter (we will try to guess the ip address of you network card)
@@ -68,7 +68,7 @@ get the associated device address/id value
     >>> device=bacnet.declareDeviceFromId(8015) # return a BACDevice object
     >>> device=bacnet.declareDeviceFromAddress('192.168.0.15') # equivalent
     >>> device
-    <BACDevice:8015#0(Digimat:Digimat3_CPU_Bridge, operational, 66 points)>
+    <BACDevice:8015:0(Digimat:Digimat3_CPU_Bridge), operational, 66 points)>
 
     >>> bacnet.discover() # this will magically declare every device reported by whois()
 
@@ -104,10 +104,10 @@ Every BAC* object has a .dump() method, very useful in interactive sessions
     +-----------------------+--------------+
 
 
-Once a device has been declared, you can retrieve it with bacnet.device(...) or directly with a bacnet[...] request. You can use either the index (0), the name (s_112_1), the id (8105) or the ip (192.168.0.15) 
+Once a device has been declared, you can retrieve a reference to the corresponding BACDevice object it with bacnet.device(...) or directly with a bacnet[...] request. You can use either the index (0), the name (s_112_1), the id (8105) or the address (192.168.0.15) 
 to retrieve your device from the BAC object. If you redeclare a device already existing, it will be simply returns the existing one (no duplication).
 
-You will have to dig a bit into the *BAC* and *BACDevice* objects to find avalaible methods and properties. It's now time to access to the points (variables) of our device, all provided
+You will have to dig a bit into the `BAC <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacnet.py>`_ and `BACDevice <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacdevice.py>`_ objects to find avalaible methods and properties. It's now time to access to the points (variables) of our device, all provided
 by the device.points property, returning a *BACPoints* object
 
 .. code-block:: python
@@ -241,7 +241,7 @@ Each point of the *BACPoints* object is accessible by it's index, type or a part
     >>> point=point['analogInput13064']
 
 
-Points are exposed through *BACPoint* objects (generic class), derived in BACPointBinaryInput, BACPointBinaryOutput, BACPointAnalogInput, BACPointAnalogOutput, BACPointBinaryValue, BACPointAnalogValue, 
+Points are exposed through `BACPoint <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacpoint.py>`_ objects (generic class), derived in BACPointBinaryInput, BACPointBinaryOutput, BACPointAnalogInput, BACPointAnalogOutput, BACPointBinaryValue, BACPointAnalogValue, 
 BACPointMultiStateInput, BACPointMultiStateOutput, BACPointMultiStateValue objects, each providing specialized BACPoint extensions. You will have to dig a bit into theses objects to learn what helper they provide. Using
 `bpython <https://bpython-interpreter.org/>`_ interactive interpreter with it's autocompletion feature is a very convenient way to discover thoses object (with the actual lack of documentation)
 
