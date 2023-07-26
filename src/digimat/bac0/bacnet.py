@@ -92,6 +92,7 @@ class BAC(object):
         self._devices={}
         self._devicesByName={}
         self._devicesByAddress={}
+        self._devicesById={}
         self._devicesByIndex={}
 
         self.open()
@@ -178,6 +179,10 @@ class BAC(object):
         except:
             pass
         try:
+            return self._devicesById[did]
+        except:
+            pass
+        try:
             return self._devicesByAddress[did]
         except:
             pass
@@ -191,32 +196,68 @@ class BAC(object):
 
     def whois(self, network='*:*', autoDeclareDevices=False):
         if self._bac0:
-            items=self._bac0.whois(network)
-
-            if items and autoDeclareDevices:
-                for item in items:
-                    self.declareDevice(item[1], item[0])
-            return items
+            return self._bac0.whois(network)
 
     def discover(self, network='*:*'):
-        return self.whois(network, autoDeclareDevices=True)
+        items=self.whois(network)
+        if items:
+            devices=[]
+            for item in items:
+                device=self.declareDevice(item[1], item[0])
+                devices.append(device)
+            return devices
 
-    def declareDevice(self, did, address=None, poll=15, filterOutOfService=False):
+    def retrieveDeviceObjectList(self, did, address=None):
+        """retrieve the objectList of a device given by it's id (130) and it's address (2001:3)"""
+        try:
+            # TODO: On BAC0 (BAC0/BAC0/core/devices/mixins/read_mixin.py) there is a fallback implemented if segmentation is not supported
+            address=address or self.getDeviceAddressFromId(did)
+            if address:
+                return self._bac0.read('%s device %d objectList' % (address, did))
+        except:
+            pass
+
+    def declareDevice(self, did, address=None, poll=15, filterOutOfService=False, objectList=None):
+        """declare a remote device specified by it's id (did, i.e 8015) and it's address (i.e 192.168.0.15 or 2001:3)"""
         device=self.device(did)
+        address=address or self.getDeviceAddressFromId(did)
         if device is None:
-            if address is None:
-                addresses=self.whois()
-                if addresses:
-                    for adr in addresses:
-                        if adr[1]==did:
-                            address=adr[0]
             if did and address:
-                device=BACDevice(self, did, address, index=len(self._devices), poll=poll, filterOutOfService=filterOutOfService)
+                device=BACDevice(self, did, address, index=len(self._devices), poll=poll, filterOutOfService=filterOutOfService, objectList=objectList)
                 self._devices[did]=device
                 self._devicesByName[device.name]=device
+                self._devicesById[address]=did
                 self._devicesByAddress[address]=device
                 self._devicesByIndex[device.index]=device
         return device
+
+    def getDeviceAddressFromId(self, did):
+        addresses=self.whois()
+        if addresses:
+            for adr in addresses:
+                if adr[1]==did:
+                    address=adr[0]
+                    return address
+
+    def getDeviceIdFromAddress(self, address):
+        addresses=self.whois()
+        if addresses:
+            for adr in addresses:
+                if adr[0]==address:
+                    did=adr[1]
+                    return did
+
+    def declareDeviceFromId(self, did, poll=15, filterOutOfService=False, objectList=None):
+        """declare a remote device specified by it's id (i.e 8015). Device address will be guessed from a whois() request."""
+        address=self.getDeviceAddressFromId(did)
+        if address:
+            return self.declareDevice(did, address, poll=poll, filterOutOfService=filterOutOfService, objectList=objectList)
+
+    def declareDeviceFromAddress(self, address, poll=15, filterOutOfService=False, objectList=None):
+        """declare a remote device specified by it's address (i.e '2001:3' or '192.168.0.84'). Device id will be guessed from a whois() request."""
+        did=self.getDeviceIdFromAddress(address)
+        if did:
+            return self.declareDevice(did, address, poll=poll, filterOutOfService=filterOutOfService, objectList=objectList)
 
     def __getitem__(self, key):
         """return any declared device from id, name or address"""

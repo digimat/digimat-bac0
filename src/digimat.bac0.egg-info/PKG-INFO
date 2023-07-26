@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: digimat.bac0
-Version: 0.0.49
+Version: 0.0.53
 Summary: Digimat BACnet BAC0 Wrapper
 Home-page: http://www.digimat.ch
 Author: Frederic Hess
@@ -55,15 +55,16 @@ The *whois()* method returns a list of remote BACnet/address servers detected on
 .. code-block:: python
 
     >>> device=bacnet.declareDevice(8015, '192.168.0.15')
-    >>> device=bacnet.declareDevice(8015, address='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
+    >>> device=bacnet.declareDevice(did=8015, address='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
 
 
-In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address
+In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address. A whois() request is sent to
+get the associated device address/id value
 
 .. code-block:: python
 
-    >>> device=bacnet.declareDevice(8015) # return a BACDevice object
-    >>> device=bacnet.declareDevice('192.168.0.15') # equivalent
+    >>> device=bacnet.declareDeviceFromId(8015) # return a BACDevice object
+    >>> device=bacnet.declareDeviceFromAddress('192.168.0.15') # equivalent
     >>> device
     <BACDevice:8015#0(Digimat:Digimat3_CPU_Bridge, operational, 66 points)>
 

@@ -10,7 +10,7 @@ from .bacpoint import BACPointMultiStateOutput
 from .bacpoint import BACPointMultiStateValue
 
 from .bacpoints import BACPoints
-from .bacpoints import BACBag
+from .bacpoints import BACPointsBag
 
 from .bacdevice import BACDevice
 from .bacnet import BAC

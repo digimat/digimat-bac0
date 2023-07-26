@@ -1,5 +1,6 @@
 #!/bin/python
 
+import datetime
 from prettytable import PrettyTable
 
 from digimat.units import Units
@@ -82,6 +83,10 @@ class BACPoint(object):
         return int(self.properties.address)
 
     @property
+    def descriptor(self):
+        return '%s%d' % (self.type, self.address)
+
+    @property
     def description(self):
         return self.properties.description
 
@@ -149,11 +154,17 @@ class BACPoint(object):
 
     @property
     def value(self):
+        """"property that return the actual value (presentValue), i.e. the last refreshed value"""
         try:
             # WARNING
             # Using ".value" may generate BACnet traffic
             # Using ".lastValue" return the last known value (without traffic)
             # This suppose that either COV or POLLING is active
+            if self.isBinary():
+                return self._bac0point.boolValue
+            value=self._bac0point.lastValue
+            if type(value) is str and ':' in value:
+                return int(value.split(":")[0])
             return self._bac0point.lastValue
         except:
             pass
@@ -166,10 +177,26 @@ class BACPoint(object):
             pass
 
     def strvalue(self):
+        """return the value expressed as a string (for display purposes)"""
         value=self.value
         if type(value) is str:
             return value
-        return '%.6g' % value
+        if type(value) is bool:
+            if value:
+                return 1
+            return 0
+        if type(value) is float:
+            return '%.6g' % value
+        return str(value)
+
+    def age(self):
+        """return the age of the last value refresh (seconds)"""
+        try:
+            t0=self._bac0point.lastTimestamp
+            td=datetime.datetime.now()-t0.replace(tzinfo=None)
+            return td.total_seconds()
+        except:
+            pass
 
     def boolValue(self):
         # to be overriden
@@ -200,7 +227,6 @@ class BACPoint(object):
         if self.isWritable():
             self.reloadPriorityArray()
         self._bac0point.value
-        return self.value
 
     def __repr__(self):
         svalue=str(self.value)
@@ -223,7 +249,9 @@ class BACPoint(object):
         t.add_row(['description', self.description])
         t.add_row(['type', self.type])
         t.add_row(['address', self.address])
+        t.add_row(['descriptor', self.descriptor])
         t.add_row(['value', self.value])
+        t.add_row(['age', self.age()])
         try:
             t.add_row(['boolValue', self.boolValue()])
         except:
@@ -475,6 +503,7 @@ class BACPointMultiState(BACPoint):
 
     @property
     def labels(self):
+        """return multiState available labels (first label is bacnet value 1)"""
         try:
             return self.properties.units_state
         except:

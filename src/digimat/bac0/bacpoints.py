@@ -46,7 +46,7 @@ class BACPoints(object):
     def __init__(self, points=None):
         self._points=[]
         self._pointByName={}
-        self._pointByType={}
+        self._pointByDescriptor={}
         self._indexByName={}
         self.add(points)
 
@@ -62,6 +62,9 @@ class BACPoints(object):
 
         for point in points:
             assert(isinstance(point, BACPoint))
+            if self.getByDescriptor(point.descriptor):
+                # print("DEBUG: discarding", point)
+                continue
             if self.getByName(point.name):
                 continue
 
@@ -69,7 +72,7 @@ class BACPoints(object):
             point._index=index
             self._points.append(point)
             self._pointByName[point.name]=point
-            self._pointByType['%s%d' % (point.type, point.address)]=point
+            self._pointByDescriptor[point.descriptor]=point
             self._indexByName[point.name]=index
 
     def __iadd__(self, point):
@@ -97,39 +100,39 @@ class BACPoints(object):
 
     def analogInput(self, address):
         ptype='analogInput%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def analogOutput(self, address):
         ptype='analogOutput%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def binaryInput(self, address):
         ptype='binaryInput%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def binaryOutput(self, address):
-        ptype='binaryOtput%d' % address
-        return self.getByType(ptype)
+        ptype='binaryOutput%d' % address
+        return self.getByDescriptor(ptype)
 
     def analogValue(self, address):
         ptype='analogValue%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def binaryValue(self, address):
         ptype='binaryValue%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def multiStateInput(self, address):
         ptype='multiStateInput%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def multiStateOutput(self, address):
         ptype='multiStateOutput%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def multiStateValue(self, address):
         ptype='multiStateValue%d' % address
-        return self.getByType(ptype)
+        return self.getByDescriptor(ptype)
 
     def __repr__(self):
         return '<%s(%d points)>' % (self.__class__.__name__, len(self.points))
@@ -157,15 +160,15 @@ class BACPoints(object):
         except:
             pass
 
-    def getByType(self, ptype):
-        """search a point based on it's type (i.e analogInput8)"""
+    def getByDescriptor(self, ptype):
+        """search a point based on it's descriptor (i.e analogInput98)"""
         try:
-            return self._pointByType[ptype]
+            return self._pointByDescriptor[ptype]
         except:
             pass
 
     def __getitem__(self, index):
-        item=self.getByIndex(index) or self.getByName(index) or self.getByType(index)
+        item=self.getByIndex(index) or self.getByName(index) or self.getByDescriptor(index)
         if not item:
             try:
                 item=self.matchFirst(index)
@@ -186,27 +189,56 @@ class BACPoints(object):
             points=self.pointsMatching(keys)
         if points:
             t=PrettyTable()
-            t.field_names=['#', 'name', 'description', 'type', 'address', 'value', 'label', 'unit', 'COV', 'OoS']
+            t.field_names=['#', 'name', 'description', 'descriptor', 'value', 'label', 'age', 'COV', 'OoS']
             t.align['name']='l'
             t.align['description']='l'
-            t.align['type']='r'
-            t.align['address']='l'
+            t.align['descriptor']='l'
             t.align['value']='r'
             t.align['label']='l'
             t.align['unit']='l'
-            t.align['prio']='l'
             for p in points:
                 unit=p.unit
+                try:
+                    age='%ds' % p.age()
+                except:
+                    age='N/A'
+
                 if p.digUnitStr():
                     unit=p.digUnitStr()
+                if not unit:
+                    unit=p.label  # FIXME: traffic
+
                 t.add_row([self.index(p.name),
                            p.name,
                            p.description,   # generate traffic the first time
-                           p.type, p.address,
+                           p.descriptor,
                            p.strvalue(),
-                           p.label,  # FIXME: traffic
                            unit,
+                           age,
                            p.isCOV(), p.isOutOfService()])
+            print(t)
+
+    def quickDump(self, keys=None):
+        if type(keys) is list:
+            points=keys
+        else:
+            points=self.pointsMatching(keys)
+        if points:
+            t=PrettyTable()
+            t.field_names=['#', 'name', 'descriptor', 'value', 'age']
+            t.align['name']='l'
+            t.align['descriptor']='l'
+            t.align['value']='r'
+            for p in points:
+                try:
+                    age='%ds' % p.age()
+                except:
+                    age='N/A'
+                t.add_row([self.index(p.name),
+                           p.name,
+                           p.descriptor,
+                           p.strvalue(),
+                           age])
             print(t)
 
     def refresh(self, keys=None):
@@ -249,7 +281,7 @@ class BACPoints(object):
                 point.relinquishAll()
 
 
-class BACBag(BACPoints):
+class BACPointsBag(BACPoints):
     def __init__(self, device, points=None):
         # assert(isinstance(BACDevice, device))
         self._device=device
@@ -262,6 +294,11 @@ class BACBag(BACPoints):
     @property
     def device(self):
         return self._device
+
+    def add(self, points):
+        if type(points) is str:
+            points=self.device.points.match(points)
+        super().add(points=points)
 
 
 if __name__ == "__main__":

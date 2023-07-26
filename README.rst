@@ -38,21 +38,25 @@ Now, assuming that your network settings are correct, you can start discovering 
     >>> bacnet.whois()      # return a list of devices detected on the network
    [('192.168.0.15', 8015), ('192.168.0.80', 4000)]
 
+    >>> bacnet.whois('*:*')     # by default, send the request on all networks
+    >>> bacnet.whois('2001:*')  # search devices on the 2001 network only
+
 
 The *whois()* method returns a list of remote BACnet/address servers detected on the network (address/deviceId). You can then can add to your node thoses remote *devices* (BACnet servers)
 
 .. code-block:: python
 
     >>> device=bacnet.declareDevice(8015, '192.168.0.15')
-    >>> device=bacnet.declareDevice(8015, address='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
+    >>> device=bacnet.declareDevice(did=8015, address='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
 
 
-In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address
+In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address. A whois() request is sent to
+get the associated device address/id value
 
 .. code-block:: python
 
-    >>> device=bacnet.declareDevice(8015) # return a BACDevice object
-    >>> device=bacnet.declareDevice('192.168.0.15') # equivalent
+    >>> device=bacnet.declareDeviceFromId(8015) # return a BACDevice object
+    >>> device=bacnet.declareDeviceFromAddress('192.168.0.15') # equivalent
     >>> device
     <BACDevice:8015#0(Digimat:Digimat3_CPU_Bridge, operational, 66 points)>
 

@@ -1,8 +1,11 @@
 from .bacpoint import BACPoint
-from .bacpoints import BACBag
+from .bacpoints import BACPointsBag
 
 import BAC0
 import xml.etree.ElementTree as ET
+
+
+from digimat.bac0 import BACPoint
 
 
 class XMLRemoteCommand(object):
@@ -49,9 +52,16 @@ class XMLRemoteCommand(object):
         general=ET.SubElement(item, 'General')
         general.set('mainLabel', '%s %s' % (point.name, point.description))
         if point.isMultiState():
-            labels=point.mulStatelabels()
+            labels=point.labels
             if labels:
-                general.set('multiStateLabels', ':'.join(labels))
+                strlabels='X;' + ';'.join(labels)
+                general.set('multiStateLabels', strlabels)
+        elif point.isBinary():
+            labels=point.labels
+            if labels:
+                general.set('lowLabel', labels[0])
+                general.set('highLabel', labels[1])
+
         general.set('decimals', str(point.digDecimals()))
 
         self.skip()

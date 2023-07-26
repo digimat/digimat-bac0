@@ -15,11 +15,11 @@ from .bacpoint import BACPointMultiStateOutput
 from .bacpoint import BACPointMultiStateValue
 
 from .bacpoints import BACPoints
-from .bacpoints import BACBag
+from .bacpoints import BACPointsBag
 
 
 class BACDevice(object):
-    def __init__(self, parent, did, address, index=0, poll=15, filterOutOfService=False):
+    def __init__(self, parent, did, address, index=0, poll=15, filterOutOfService=False, objectList=None):
         # assert(isinstance(parent, BAC))
         self._parent=parent
         self._did=int(did)
@@ -33,8 +33,8 @@ class BACDevice(object):
         # https://bac0.readthedocs.io/en/latest/controller.html
         # Real problem for slow devices !!!
         # objects=[('analogValue', 9)]
-        objects=None
-        self._bac0device=BAC0.device(address, did, parent.bac0, poll=poll, history_size=None, object_list=objects)
+        # This can take some time on slow devices (i.e. MSTP) with a lot of points
+        self._bac0device=BAC0.device(address, did, parent.bac0, poll=poll, history_size=None, object_list=objectList)
         self._points=BACPoints()
         self.loadDevicePoints(filterOutOfService)
 
@@ -50,9 +50,6 @@ class BACDevice(object):
                 continue
 
             ptype=bac0point.properties.type
-            # FIXME: dont' recreate BACPoint if already here
-            # Allow load() more than one time
-            # print(ptype)
             if ptype=='binaryInput':
                 point=BACPointBinaryInput(self, bac0point)
             elif ptype=='binaryOutput':
@@ -75,6 +72,7 @@ class BACDevice(object):
                 self.logger.warning('unable to match a specific BACPoint() class for type %s' % ptype)
                 point=BACPoint(self, bac0point)
 
+            # if BACPoint is already existing, it will not be added
             self._points.add(point)
 
     @property
@@ -204,7 +202,7 @@ class BACDevice(object):
         print(t)
 
     def bag(self, key=None):
-        bag=BACBag(self)
+        bag=BACPointsBag(self)
         if key:
             if key=='*':
                 bag.add(self.points)
