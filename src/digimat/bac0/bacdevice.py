@@ -39,7 +39,7 @@ class BACDevice(object):
         self.loadDevicePoints(filterOutOfService)
 
     def __repr__(self):
-        return '<%s:%d#%s(%s:%s, %d points)>' % (self.__class__.__name__,
+        return '<%s:%d:%s(%s:%s), %d points)>' % (self.__class__.__name__,
             self._did, str(self.index),
             self.vendorName, self.modelName,
             len(self._points))
