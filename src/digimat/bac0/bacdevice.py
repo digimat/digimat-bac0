@@ -19,6 +19,8 @@ from .bacpoints import BACPointsBag
 
 
 class BACDevice(object):
+    """Represent a remote BACnet device. Should be created from the BAC object, with something like bacnet.declareObject(...)
+    """
     def __init__(self, parent, did, address, index=0, poll=15, filterOutOfService=False, objectList=None):
         # assert(isinstance(parent, BAC))
         self._parent=parent
@@ -36,7 +38,7 @@ class BACDevice(object):
         # This can take some time on slow devices (i.e. MSTP) with a lot of points
         self._bac0device=BAC0.device(address, did, parent.bac0, poll=poll, history_size=None, object_list=objectList)
         self._points=BACPoints()
-        self.loadDevicePoints(filterOutOfService)
+        self._loadDevicePoints(filterOutOfService)
 
     def __repr__(self):
         return '<%s:%d:%s(%s:%s), %d points)>' % (self.__class__.__name__,
@@ -44,7 +46,7 @@ class BACDevice(object):
             self.vendorName, self.modelName,
             len(self._points))
 
-    def loadDevicePoints(self, filterOutOfService=True):
+    def _loadDevicePoints(self, filterOutOfService=True):
         for bac0point in self._bac0device.points:
             if filterOutOfService and bac0point.bacnet_properties['outOfService']:
                 continue
@@ -81,10 +83,20 @@ class BACDevice(object):
 
     @property
     def bac0(self):
+        """reference to the BAC0 main object (readonly)
+        """
         return self._parent.bac0
 
     @property
+    def bac0device(self):
+        """reference to the BAC0 device object associated to this device (readonly)
+        """
+        return self._bac0device
+
+    @property
     def points(self):
+        """BACPoints object of this device containing every registered BACPoint (readonly)
+        """
         return self._points
 
     @property
@@ -95,6 +107,8 @@ class BACDevice(object):
             pass
 
     def getProperty(self, name, update=False):
+        """return the requested bacnet property value (with a pre-read if update if True)
+        """
         try:
             # using .bacnet_properties object property implies a refresh with BAC0
             # value=self._bac0device.bacnet_properties[name].
@@ -106,63 +120,94 @@ class BACDevice(object):
         except:
             pass
 
+    def updateProperties(self):
+        """force a re-read of the properties of this device (will generate bacnet traffic)
+        """
+        self._bac0device.update_bacnet_properties()
+
     @property
     def name(self):
+        """return the name property of the device"""
         return self.getProperty('objectName')
 
     @property
     def index(self):
+        """return index (i.e. table index position) of this device as registered in the BAC parent's object table
+        """
         return self._index
 
     @property
     def systemStatus(self):
+        """return the actual device status of the device (will send a systemStatus property read to the device)
+        """
         return self.getProperty('systemStatus', True)
 
     @property
     def vendorName(self):
+        """return the vendorName property of the device
+        """
         return self.getProperty('vendorName')
 
     @property
     def vendorIdentifier(self):
+        """return the vendorId property of the device
+        """
         return self.getProperty('vendorIdentifier')
 
     @property
     def modelName(self):
+        """return the modelName property of the device
+        """
         return self.getProperty('modelName')
 
     @property
     def description(self):
+        """return the description property of the device
+        """
         return self.getProperty('description')
 
     def isSegmentationSupported(self):
+        """return True if the device supports message data segmentation
+        """
         return self._bac0device.segmentation_supported
 
     @property
     def did(self):
+        """return the deviceId"""
         return self._did
 
     @property
     def address(self):
+        """return the address of the device (can be an ip or something like "2000:3")
+        """
         return self._address
 
     def ping(self):
+        """send a request to the device to check if it's alive (responding)
+        """
         return self._bac0device.ping()
 
     def poll(self, delay=15):
-        """Register a device task that poll each all points on this device"""
+        """Register a device task that poll each all points on this device
+        """
         self.pollStop()
         self._bac0device.poll(delay=delay)
 
     def pollStop(self):
-        """Unregister the device polling task"""
+        """Unregister the device point's polling task
+        """
         self._bac0device.poll(command='stop')
 
     def isPolled(self):
+        """return True if this device seems to be polled (periodic read of each registered point)
+        """
         if self._bac0device.properties.pollDelay:
             return True
         return False
 
     def count(self):
+        """return the number of registered points
+        """
         return self.points.count()
 
     def __len__(self):
@@ -175,12 +220,16 @@ class BACDevice(object):
             pass
 
     def refresh(self, keys=None):
+        """force refresh of devices registered points (calling self.points.refresh())
+        """
         self.points.refresh(keys)
 
     def __iter__(self):
         return iter(self.points)
 
     def dump(self):
+        """dump device informations
+        """
         t=PrettyTable()
         t.field_names=['property', 'value']
         t.align['property']='l'
@@ -201,7 +250,18 @@ class BACDevice(object):
 
         print(t)
 
+    def readPropertyRaw(self, prop):
+        """send a native bacpypes/read request on the device (i.e prop=('analogValue', 1, 'presentValue'))
+        """
+        return self._bac0device.read_property(prop)
+
+    def writePropertyRaw(self, prop, value, priority=16):
+        """send a native bacpypes/write request on the device (i.e prop=('analogValue', 1, 'presentValue'))
+        """
+        return self._bac0device.write_property(prop)
+
     def bag(self, key=None):
+        """create a BACPointsBag object (a kind of point's view or points collection) associated to this device"""
         bag=BACPointsBag(self)
         if key:
             if key=='*':

@@ -13,26 +13,39 @@ digimatUnits=Units()
 
 
 class BACPoint(object):
+    """Represent BACnet's point of a BACDevice. Every BACPoint is stored in a parent's BACPoints object. BACPoint objects are created by the BACDevice object
+    """
     def __init__(self, device, bac0point, index=None):
         # assert(isinstance(device, BACDevice))
         self._device=device
         self._bac0point=bac0point
         self._index=index
-        self.onInit()
+        self._onInit()
 
-    def onInit(self):
+    def _onInit(self):
+        # to be overridden
         pass
 
     def isWritable(self):
+        """return True if the point seems to be writable
+        """
         return False
 
-    def normalizeValue(self, value):
+    def _normalizeValue(self, value):
+        """Convert a point value to it's internal "BAC0/bacpypes" attended representation.
+        """
         # to be overriden
         return value
 
     def priority(self, priority=None):
         # to be overriden
         return None
+
+    @property
+    def bac0point(self):
+        """reference to the BAC0's point object
+        """
+        return self._bac0point
 
     @property
     def label(self):
@@ -326,7 +339,7 @@ class BACPointWritable(BACPoint):
                 # relinquish
                 return self._bac0point.write(value, prop=prop)
 
-            value=self.normalizeValue(value)
+            value=self._normalizeValue(value)
             return self._bac0point.write(value, prop=prop)
         except:
             pass
@@ -415,7 +428,7 @@ class BACPointBinary(BACPoint):
     def boolValue(self):
         return self.isOn()
 
-    def normalizeValue(self, value):
+    def _normalizeValue(self, value):
         try:
             if type(value) is str:
                 svalue=value.lower()
@@ -522,7 +535,7 @@ class BACPointMultiState(BACPoint):
         except:
             pass
 
-    def normalizeValue(self, value):
+    def _normalizeValue(self, value):
         try:
             if type(value) is str:
                 labels=self.labels

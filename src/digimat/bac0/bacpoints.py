@@ -2,6 +2,7 @@
 
 import unicodedata
 import re
+import os
 from prettytable import PrettyTable
 
 # import BAC0
@@ -182,13 +183,14 @@ class BACPoints(object):
         except:
             pass
 
-    def dump(self, keys=None):
+    def dump(self, keys=None, filterOoS=False):
         if type(keys) is list:
             points=keys
         else:
             points=self.pointsMatching(keys)
         if points:
             t=PrettyTable()
+            # t.max_table_width=width=os.get_terminal_size()[0]-12
             t.field_names=['#', 'name', 'description', 'descriptor', 'value', 'label', 'age', 'COV', 'OoS']
             t.align['name']='l'
             t.align['description']='l'
@@ -197,6 +199,8 @@ class BACPoints(object):
             t.align['label']='l'
             t.align['unit']='l'
             for p in points:
+                if filterOoS and p.isOutOfService():
+                    continue
                 unit=p.unit
                 try:
                     age='%ds' % p.age()
@@ -215,7 +219,8 @@ class BACPoints(object):
                            p.strvalue(),
                            unit,
                            age,
-                           p.isCOV(), p.isOutOfService()])
+                           'X' if p.isCOV() else '',
+                           'X' if p.isOutOfService() else ''])
             print(t)
 
     def quickDump(self, keys=None):

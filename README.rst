@@ -1,9 +1,9 @@
 Python digimat.bac0
 ===================
 
-This is a Python 3 module basically providing a wrapper around the `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
-itself using `bacpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module is to provide
-a simple way to discover/browse/interact with BACnet/IP devices on a network, especially from a terminal session. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
+`digimat.bac0 <https://pypi.org/project/digimat.bac0/>`_ is a Python 3 module basically providing a wrapper around the excellent  `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
+itself using `BACpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module is to provide
+a super simple way to discover/browse/interact with BACnet/IP devices on a network, especially from a terminal session. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
 
 .. code-block:: python
 
@@ -12,8 +12,8 @@ a simple way to discover/browse/interact with BACnet/IP devices on a network, es
 
 
 Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). This short `Youtube Screencast <https://youtu.be/YUUXk398lh8>`_ shows a small interactive usage of this module.You have to provide the ip ("ip/networkSize") that will be used to send/receive 
-every BACnet UDP messages. Under Linux/MacOS hots, this can be done automagically if you have installed the `netifaces <https://pypi.org/project/netifaces/>`_ module (install it with *pip install -U netifaces*). If so, you can
-ommit the *network* parameter (we will try to guess the ip address of you network card)
+every BACnet UDP messages. Under Linux/MacOS hosts, this can be done automagically if you have installed the `netifaces <https://pypi.org/project/netifaces/>`_ module (install it with *pip install -U netifaces*). If so, you can
+ommit the *network* parameter (the module will try to guess the ip address of your network card)
 
 .. code-block:: python
 
@@ -22,7 +22,7 @@ ommit the *network* parameter (we will try to guess the ip address of you networ
     <BAC:192.168.0.84/24(0 devices)>
 
 
-If needed, you can give a bbmd router ('ipAddress[:port]') to the constructor
+If needed, you can give a `bbmd router <https://www.optigo.net/what-bacnet-broadcast-management-device-bbmd/>`_ ('ipAddress[:port]') to the constructor
 
 .. code-block:: python
 
@@ -203,14 +203,18 @@ BACPointMultiStateInput, BACPointMultiStateOutput, BACPointMultiStateValue objec
     >>> point.isOff()
     >>> point.label
     >>> point.labels
+    >>> point.value=1
+    >>> point.value='on'
 
     # for multiState values
     >>> point.state
     >>> point.label
     >>> point.labels
+    >>> point.value
+    >>> point.value=2
 
 
-A device automatically refresh it's points every 15s (the device's polling time could be specified at object creation/declaration). You can stop this with device.pollStop() or adjust the polling period with device.poll(60). This is the device polling global setting. Every point may also be polled individually with point.poll(10) and point.pollStop(). Of course you may wish to set an individual poll for each point of the device with deice.points.poll(60). But a global device.poll() is a more efficient way to do it.
+A device automatically refresh it's points every 15s (the device's polling time could be specified at object creation/declaration). You can stop this with device.pollStop() or adjust the polling period with device.poll(60). This is the device polling global setting. Every point may also be polled individually with point.poll(10) and point.pollStop(). Of course you may wish to set an individual poll for each point of the device with device.points.poll(60). But a global device.poll() is a more efficient way to do it.
 Refresh may also be done throug COV (Change Of Value) mechanism. By default, COV is not enabled on a device. You can enable COV subscriptions on a point with point.cov(), and disable it with point.covCancel(). This can also be done on each points with device.points.cov(). By default, the COV timeout is set to 300s. The poll and/or COV mechanism ensure the autorefresh of the points values. If needed, a point can be refreshed manually with point.refresh(). As suspected, the device.refresh() or device.points.refresh() does this globally.
 
 If a *BACPoint* object doesn't expose something that would be useful, either ask it (we will try to add this support) or use the underlying ._bac0point object which is the BAC0's `Point object <https://bac0.readthedocs.io/en/latest/BAC0.core.devices.html#BAC0.core.devices.Points.Point>`_ associated to this point.

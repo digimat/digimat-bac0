@@ -5,6 +5,7 @@ import pkg_resources
 # import time
 import logging
 import logging.handlers
+import os
 
 from prettytable import PrettyTable
 
@@ -22,6 +23,8 @@ from .bacdevice import BACDevice
 # Help to build a local node
 # https://pythoninthebuilding.wordpress.com/
 # https://github.com/ChristianTremblay/BAC0/blob/master/tests/conftest.py
+
+# docstring: https://developer.lsst.io/v/DM-15183/python/numpydoc.html
 
 
 class BAC(object):
