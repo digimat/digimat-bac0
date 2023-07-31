@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: digimat.bac0
-Version: 0.0.55
+Version: 0.0.56
 Summary: Digimat BACnet BAC0 Wrapper
 Home-page: https://github.com/digimat/digimat-bac0
 Author: Frederic Hess
@@ -12,8 +12,8 @@ Classifier: Programming Language :: Python :: 3
 Python digimat.bac0
 ===================
 
-`digimat.bac0 <https://pypi.org/project/digimat.bac0/>`_ is a Python 3 module basically providing a wrapper around the `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
-itself using `bacpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module is to provide
+`digimat.bac0 <https://pypi.org/project/digimat.bac0/>`_ is a Python 3 module basically providing a wrapper around the excellent  `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
+itself using `BACpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module is to provide
 a super simple way to discover/browse/interact with BACnet/IP devices on a network, especially from a terminal session. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
 
 .. code-block:: python
