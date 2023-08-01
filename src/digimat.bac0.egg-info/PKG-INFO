@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: digimat.bac0
-Version: 0.0.56
+Version: 0.0.58
 Summary: Digimat BACnet BAC0 Wrapper
 Home-page: https://github.com/digimat/digimat-bac0
 Author: Frederic Hess
@@ -13,8 +13,7 @@ Python digimat.bac0
 ===================
 
 `digimat.bac0 <https://pypi.org/project/digimat.bac0/>`_ is a Python 3 module basically providing a wrapper around the excellent  `BAC0 <https://bac0.readthedocs.io/en/latest/>`_ module, 
-itself using `BACpypes <https://github.com/JoelBender/bacpypes>`_, allowing to access and browse BACnet/IP networks. The main goal of this module is to provide
-a super simple way to discover/browse/interact with BACnet/IP devices on a network, especially from a terminal session. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
+itself using `BACpypes <https://github.com/JoelBender/bacpypes>`_. This module provide super easy access (browsing, interacting) to BACnet/IP networks. This module can be used interactively or within an application. Install this module with a *pip install -U digimat.bac0* command.
 
 .. code-block:: python
 
@@ -22,9 +21,7 @@ a super simple way to discover/browse/interact with BACnet/IP devices on a netwo
     >>> bacnet=BAC(network='192.168.0.84/24')
 
 
-Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). This short `Youtube Screencast <https://youtu.be/YUUXk398lh8>`_ shows a small interactive usage of this module.You have to provide the ip ("ip/networkSize") that will be used to send/receive 
-every BACnet UDP messages. Under Linux/MacOS hosts, this can be done automagically if you have installed the `netifaces <https://pypi.org/project/netifaces/>`_ module (install it with *pip install -U netifaces*). If so, you can
-ommit the *network* parameter (the module will try to guess the ip address of your network card)
+Congratulations ! You just have launched a BACnet/IP node binded to your LAN card (ip 192.168.0.84, netmask 255.255.255.0). This short `Youtube Screencast <https://youtu.be/YUUXk398lh8>`_ shows a small interactive usage of this module. You have to provide the ip ("ip/networkSize") of the card that will be used to send+receive every BACnet UDP messages. Under Linux/MacOS hosts, this can be done automagically if you have installed the `netifaces <https://pypi.org/project/netifaces/>`_ module (install it with *pip install -U netifaces*). If so, you can ommit the *network* parameter (the module will *try* to guess the ip address of your network card)
 
 .. code-block:: python
 
@@ -40,7 +37,7 @@ If needed, you can give a `bbmd router <https://www.optigo.net/what-bacnet-broad
     >>> bacnet=BAC(router='192.168.2.1')
 
 
-Now, assuming that your network settings are correct, you can start discovering the network
+Now, assuming that your network settings are correct, you can start discovering the BACnet network
 
 .. code-block:: python
 
@@ -51,7 +48,7 @@ Now, assuming that your network settings are correct, you can start discovering 
     >>> bacnet.whois('2001:*')  # search devices on the 2001 network only
 
 
-The *whois()* method returns a list of remote BACnet/address servers detected on the network (address/deviceId). You can then can add to your node thoses remote *devices* (BACnet servers)
+The *whois()* method returns a list of remote BACnet/address servers detected on the network (address/deviceId). As most of theses BACnet requests are using BAC0/BACpypes requests, you will find additional information in the documentation of theses projects (if really needed). To communicate with BACnet devices (BACnet servers), you can add (declare) to them your node
 
 .. code-block:: python
 
@@ -59,8 +56,7 @@ The *whois()* method returns a list of remote BACnet/address servers detected on
     >>> device=bacnet.declareDevice(did=8015, address='192.168.0.15', poll=60) # with polling time specified (default is to poll it every 15s)
 
 
-In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address. A whois() request is sent to
-get the associated device address/id value
+In fact, if the device is detected by the whois(), you can declare a node based on it's id or it's address. A whois() request will be triggered to retrieve the associated device missing address/id value. This will create (if not already done) and return the corresponding BACDevice object.
 
 .. code-block:: python
 
@@ -69,10 +65,14 @@ get the associated device address/id value
     >>> device
     <BACDevice:8015:0(Digimat:Digimat3_CPU_Bridge), operational, 66 points)>
 
+If you are super lazy (no you're not), you can even use the .discover() method to auto declare every device discovered by a whois() request. But you can't really predict what will be exactly done, so it's more an helper for interactive sessions.
+
+.. code-block:: python
+
     >>> bacnet.discover() # this will magically declare every device reported by whois()
 
 
-The underlying BAC0 module has started a thread managing the remote bacnet nodes (understand remote "BACnet servers") you will declare to your node. Every BAC* object has a .dump() method, very useful in interactive sessions
+The underlying BAC0 module has started a thread managing each remote bacnet device (understand remote "BACnet servers") you will declare to your node. Every BAC* object (BAC, BACDevice, BACPoints, BACPoint) has a .dump() method, very useful in interactive sessions
 
 .. code-block:: python
 
@@ -103,11 +103,9 @@ The underlying BAC0 module has started a thread managing the remote bacnet nodes
     +-----------------------+--------------+
 
 
-Once a device has been declared, you can retrieve a reference to the corresponding BACDevice object it with bacnet.device(...) or directly with a bacnet[...] request. You can use either the index (0), the name (s_112_1), the id (8105) or the address (192.168.0.15) 
-to retrieve your device from the BAC object. If you redeclare a device already existing, it will be simply returns the existing one (no duplication).
+Once a device has been declared, you can retrieve a reference to the corresponding BACDevice object it with bacnet.device(...) or directly with a bacnet[...] array access. You can use either the index (0), the name (s_112_1), the id (8105) or the address (192.168.0.15) to retrieve your device from the BAC object. If you redeclare a device already existing, it will be simply returns the existing one (no duplication). The BAC object is iterable, so you can also use something like "for device in BAC:". requesting a non existant (non declared) device returns None.
 
-You will have to dig a bit into the `BAC <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacnet.py>`_ and `BACDevice <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacdevice.py>`_ objects to find avalaible methods and properties. It's now time to access to the points (variables) of our device, all provided
-by the device.points property, returning a *BACPoints* object
+You will have to dig a bit into the `BAC <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacnet.py>`_ and `BACDevice <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacdevice.py>`_ objects to find avalaible methods and properties. It's now time to access to the points (variables) of our device, all provided by the device.points property, returning a *BACPoints* object
 
 .. code-block:: python
 
@@ -144,7 +142,7 @@ by the device.points property, returning a *BACPoints* object
     | 14 | r_112_1_cio_13070_0 | sonde ambiance bureau individuel s-sol              | analogInput13070 | 23.4086 | C     | 11s | False | False |
     +----+---------------------+-----------------------------------------------------+------------------+---------+-------+-----+-------+-------+
 
-Each point of the *BACPoints* object is accessible by it's index, type or a part of *something belonging* to it 
+Using the BACPoints.dump() method ca take some time on slow devices as this implies some read requests. The points.quickDump() provide a minimal dump avoiding some extra requests. Each point of the *BACPoints* object is accessible by it's *index* (pure internal index of a point in it's BACPoints array), *type* or a part of *something belonging* to it 
 
 .. code-block:: python
 
@@ -180,9 +178,8 @@ Each point of the *BACPoints* object is accessible by it's index, type or a part
     >>> point=point['analogInput13064']
 
 
-Points are exposed through `BACPoint <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacpoint.py>`_ objects (generic class), derived in BACPointBinaryInput, BACPointBinaryOutput, BACPointAnalogInput, BACPointAnalogOutput, BACPointBinaryValue, BACPointAnalogValue, 
-BACPointMultiStateInput, BACPointMultiStateOutput, BACPointMultiStateValue objects, each providing specialized BACPoint extensions. You will have to dig a bit into theses objects to learn what helper they provide. Using
-`bpython <https://bpython-interpreter.org/>`_ interactive interpreter with it's autocompletion feature is a very convenient way to discover thoses object (with the actual lack of documentation)
+The BACPoints object offer many helpers to search/access it's points. BACPoints is also iterable. Points are exposed through `BACPoint <https://github.com/digimat/digimat-bac0/blob/main/src/digimat/bac0/bacpoint.py>`_ objects (generic class), derived in BACPointBinaryInput, BACPointBinaryOutput, BACPointAnalogInput, BACPointAnalogOutput, BACPointBinaryValue, BACPointAnalogValue, 
+BACPointMultiStateInput, BACPointMultiStateOutput, BACPointMultiStateValue objects, each providing specialized BACPoint extensions. You will have to dig a bit into theses objects to learn what helper they provide. Using `bpython <https://bpython-interpreter.org/>`_ interactive interpreter with it's autocompletion feature is a very convenient way to discover thoses object (with the actual lack of documentation)
 
 .. code-block:: python
 
@@ -225,12 +222,33 @@ BACPointMultiStateInput, BACPointMultiStateOutput, BACPointMultiStateValue objec
     >>> point.value=2
 
 
-A device automatically refresh it's points every 15s (the device's polling time could be specified at object creation/declaration). You can stop this with device.pollStop() or adjust the polling period with device.poll(60). This is the device polling global setting. Every point may also be polled individually with point.poll(10) and point.pollStop(). Of course you may wish to set an individual poll for each point of the device with device.points.poll(60). But a global device.poll() is a more efficient way to do it.
-Refresh may also be done throug COV (Change Of Value) mechanism. By default, COV is not enabled on a device. You can enable COV subscriptions on a point with point.cov(), and disable it with point.covCancel(). This can also be done on each points with device.points.cov(). By default, the COV timeout is set to 300s. The poll and/or COV mechanism ensure the autorefresh of the points values. If needed, a point can be refreshed manually with point.refresh(). As suspected, the device.refresh() or device.points.refresh() does this globally.
+Refreshing point's values
+=========================
 
-If a *BACPoint* object doesn't expose something that would be useful, either ask it (we will try to add this support) or use the underlying ._bac0point object which is the BAC0's `Point object <https://bac0.readthedocs.io/en/latest/BAC0.core.devices.html#BAC0.core.devices.Points.Point>`_ associated to this point.
-If a *BACDevice* object doesn't expose something that would be useful, you can use the underlying ._bac0device BAC0 `device object <https://github.com/ChristianTremblay/BAC0/blob/master/BAC0/core/devices/Device.py>`_.
-If the *BAC* object doesn't expose something that would be useful, you can use the underlying ._bac0 BAC0 `application object <https://github.com/ChristianTremblay/BAC0/blob/master/BAC0/scripts/Lite.py>`_.
+A BACDevice automatically refresh it's points every 15s (the device's polling time could be specified at object creation/declaration).
+
+
+.. code-block:: python
+
+    >>> device=b.declareDevice(did=8015, address='192.168.0.15', poll=60)
+    ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+    │ b.declareDevice: (self, did, address=None, poll=15, filterOutOfService=False, objectList=None)                                                                        │
+    │ declareDevice              declareDeviceFromAddress   declareDeviceFromId                                                                                             │
+    │ declare a remote device specified by it's id (did, i.e 8015) and it's address (i.e 192.168.0.15 or 2001:3)                                                            │
+    └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+You can stop the polling with device.pollStop() or adjust the polling period (seconds) with device.poll(60). This is the device polling *global* setting. Every point may also be polled individually with point.poll(10) and point.pollStop(). Of course you may wish to set an individual poll for each point of the device with device.points.poll(60). But using the *global* device.poll() mechanism is a lot more efficient way to do it. 
+
+Refresh may also be done throug COV (Change Of Value) mechanism. By default, COV is not enabled on a device. You can enable COV subscriptions on a secific point with point.cov(), and disable it with point.covCancel(). This can also be done on each points with device.points.cov() or with it's shortcut device.cov(ttl=300). By default, the COV timeout is set to 300s. The poll and/or COV mechanism ensure the autorefresh of the points values. If needed, a point can be refreshed manually with point.refresh() -- trigggering a read request on the presentValue. As suspected, the device.refresh() or device.points.refresh() does this globally.
+
+
+Going further
+=============
+
+If a *BACPoint* object doesn't expose something that would be useful, either ask it (we will try to add this support) or use the underlying .bac0point object which is the BAC0's `Point object <https://bac0.readthedocs.io/en/latest/BAC0.core.devices.html#BAC0.core.devices.Points.Point>`_ associated to this point.
+If a *BACDevice* object doesn't expose something that would be useful, you can use the underlying .bac0device BAC0 `device object <https://github.com/ChristianTremblay/BAC0/blob/master/BAC0/core/devices/Device.py>`_.
+If the *BAC* object doesn't expose something that would be useful, you can use the underlying .bac0 BAC0 `application object <https://github.com/ChristianTremblay/BAC0/blob/master/BAC0/scripts/Lite.py>`_.
 
 
 Integrated Node
@@ -243,6 +261,7 @@ The module provide a simple BACnet browser application you can start with "pytho
     parser=argparse.ArgumentParser(description='BACnet/IP browser')
     parser.add_argument('--router', dest='router', type=str, help='BBMD router address')
     parser.add_argument('--network', dest='network', type=str, help='optional ip/netsize of the BACnet/IP interface')
+    parser.add_argument('--discover', dest='discover', action='store_true', help='launch a discover at startup')
     parser.add_argument('--debug', dest='debug', action='store_true', help='enable debug/verbose mode')
     args=parser.parse_args()
 
@@ -250,11 +269,13 @@ The module provide a simple BACnet browser application you can start with "pytho
     if args.debug:
         bacnet.BAC0LogDebug()
 
-    if bacnet.discover():
-        bacnet.dump()
+    if args.discover:
+        bacnet.discover():
+
+    bacnet.dump()
 
 
-When launched interactively (-i), you'll have a working *bacnet* variable (a BAC object) ready to be used in just one command line.
+When launched interactively (python -i -m digimat.bac0), you'll have a working *bacnet* variable (a BAC object) ready to be used in just one command line.
 
 
 Todo

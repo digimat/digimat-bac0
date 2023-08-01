@@ -225,9 +225,12 @@ class BACPoint(object):
             return True
 
     def cov(self, ttl=300):
-        if ttl<=0:
-            ttl=60
-        self._bac0point.subscribe_cov(confirmed=True, lifetime=ttl, callback=None)
+        if ttl==0:
+            self.covCancel()
+        else:
+            if ttl<=0:
+                ttl=60
+            self._bac0point.subscribe_cov(confirmed=True, lifetime=ttl, callback=None)
 
     def covCancel(self):
         self._bac0point.cancel_cov()

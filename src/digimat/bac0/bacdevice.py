@@ -205,6 +205,12 @@ class BACDevice(object):
             return True
         return False
 
+    def cov(self, ttl=300):
+        self.points.cov(ttl)
+
+    def covCancel(self):
+        self.points.covCancel()
+
     def count(self):
         """return the number of registered points
         """

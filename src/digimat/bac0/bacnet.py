@@ -103,6 +103,14 @@ class BAC(object):
     def __repr__(self):
         return '<%s:%s(%d devices)>' % (self.__class__.__name__, self._network, len(self._devices))
 
+    def count(self):
+        """return actual number of declared devices
+        """
+        return len(self._devices)
+
+    def __len__(self):
+        return self.count()
+
     def getVersion(self):
         try:
             distribution=pkg_resources.get_distribution('digimat.bac0')
